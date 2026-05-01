@@ -1,11 +1,11 @@
 /**
- * Project ID generation for kdco registry plugins.
+ * Project ID generation for OpenCode plugins.
  *
  * Generates a stable, unique identifier for a project based on its git history.
  * Used for cross-worktree consistency in delegation storage, state databases,
  * and other plugin data that should be shared across worktrees.
  *
- * @module kdco-primitives/get-project-id
+ * @module primitives/get-project-id
  */
 
 import * as crypto from "node:crypto"

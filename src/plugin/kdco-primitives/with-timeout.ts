@@ -1,10 +1,10 @@
 /**
- * Promise timeout utility for kdco registry plugins.
+ * Promise timeout utility for OpenCode plugins.
  *
  * Provides a clean wrapper around Promise.race for timeout handling,
  * replacing inline timeout patterns throughout the codebase.
  *
- * @module kdco-primitives/with-timeout
+ * @module primitives/with-timeout
  */
 
 /**

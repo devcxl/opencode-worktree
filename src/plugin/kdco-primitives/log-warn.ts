@@ -1,10 +1,10 @@
 /**
- * Warning logger for kdco registry plugins.
+ * Warning logger for OpenCode plugins.
  *
  * Provides a unified interface for logging warnings that works with
  * both the OpenCode client (when available) and console fallback.
  *
- * @module kdco-primitives/log-warn
+ * @module primitives/log-warn
  */
 
 import type { OpencodeClient } from "./types"
