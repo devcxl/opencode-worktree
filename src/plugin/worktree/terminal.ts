@@ -8,7 +8,8 @@
  * interface for terminal operations with proper concurrency control.
  */
 
-import * as fs from "node:fs/promises"
+import * as fs from "node:fs"
+import * as fsPromises from "node:fs/promises"
 import * as os from "node:os"
 import * as path from "node:path"
 import { z } from "zod"
@@ -49,14 +50,14 @@ export async function withTempScript<T>(
 		`worktree-${Date.now()}-${Math.random().toString(36).slice(2)}${extension}`,
 	)
 	await Bun.write(scriptPath, scriptContent)
-	await fs.chmod(scriptPath, 0o755)
+	await fsPromises.chmod(scriptPath, 0o755)
 
 	try {
 		return await fn(scriptPath)
 	} finally {
 		try {
 			if (await Bun.file(scriptPath).exists()) {
-				await fs.rm(scriptPath)
+				await fsPromises.rm(scriptPath)
 			}
 		} catch (cleanupError) {
 			// Log but don't throw - cleanup is best-effort
@@ -70,7 +71,7 @@ export async function withTempScript<T>(
  * The script deletes itself on ANY exit (success, error, or signal).
  * This eliminates race conditions with detached processes.
  */
-function wrapWithSelfCleanup(script: string): string {
+export function wrapWithSelfCleanup(script: string): string {
 	return `#!/bin/bash
 trap 'rm -f "$0"' EXIT INT TERM
 ${script}`
@@ -134,30 +135,20 @@ export interface TerminalResult {
 	error?: string
 }
 
-function normalizeArgv(argv?: string[]): string[] {
-	if (!argv) {
-		return []
-	}
-
-	return argv
-}
-
 export function buildBashCommandFromArgv(argv?: string[]): string | undefined {
-	const normalizedArgv = normalizeArgv(argv)
-	if (normalizedArgv.length === 0) {
+	if (!argv || argv.length === 0) {
 		return undefined
 	}
 
-	return normalizedArgv.map((arg) => `"${escapeBash(arg)}"`).join(" ")
+	return argv.map((arg) => `"${escapeBash(arg)}"`).join(" ")
 }
 
 export function buildBatchCommandFromArgv(argv?: string[]): string | undefined {
-	const normalizedArgv = normalizeArgv(argv)
-	if (normalizedArgv.length === 0) {
+	if (!argv || argv.length === 0) {
 		return undefined
 	}
 
-	return normalizedArgv.map((arg) => `"${escapeBatch(arg).replace(/"/g, '""')}"`).join(" ")
+	return argv.map((arg) => `"${escapeBatch(arg).replace(/"/g, '""')}"`).join(" ")
 }
 
 type ResolveExecutable = (command: string) => string | null | undefined
@@ -610,6 +601,16 @@ export async function openMacOSTerminal(cwd: string, argv?: string[]): Promise<T
 		return { success: false, error: "Working directory is required" }
 	}
 
+	// Guard: verify cwd exists and is a directory
+	try {
+		const stat = await fsPromises.stat(cwd)
+		if (!stat.isDirectory()) {
+			return { success: false, error: `Working directory is not a directory: ${cwd}` }
+		}
+	} catch {
+		return { success: false, error: `Working directory does not exist: ${cwd}` }
+	}
+
 	const escapedCwd = escapeBash(cwd)
 	const command = buildBashCommandFromArgv(argv)
 	const scriptContent = wrapWithSelfCleanup(
@@ -684,7 +685,7 @@ export async function openMacOSTerminal(cwd: string, argv?: string[]): Promise<T
 					`worktree-${Date.now()}-${Math.random().toString(36).slice(2)}.sh`,
 				)
 				await Bun.write(detachedScriptPath, scriptContent)
-				await fs.chmod(detachedScriptPath, 0o755)
+				await fsPromises.chmod(detachedScriptPath, 0o755)
 
 				const kittyProc = Bun.spawn(
 					["kitty", "--directory", cwd, "-e", "bash", detachedScriptPath],
@@ -705,7 +706,7 @@ export async function openMacOSTerminal(cwd: string, argv?: string[]): Promise<T
 					`worktree-${Date.now()}-${Math.random().toString(36).slice(2)}.sh`,
 				)
 				await Bun.write(detachedScriptPath, scriptContent)
-				await fs.chmod(detachedScriptPath, 0o755)
+				await fsPromises.chmod(detachedScriptPath, 0o755)
 
 				const alacrittyProc = Bun.spawn(
 					["alacritty", "--working-directory", cwd, "-e", "bash", detachedScriptPath],
@@ -726,7 +727,7 @@ export async function openMacOSTerminal(cwd: string, argv?: string[]): Promise<T
 					`worktree-${Date.now()}-${Math.random().toString(36).slice(2)}.sh`,
 				)
 				await Bun.write(detachedScriptPath, scriptContent)
-				await fs.chmod(detachedScriptPath, 0o755)
+				await fsPromises.chmod(detachedScriptPath, 0o755)
 
 				const warpProc = Bun.spawn(["open", "-b", "dev.warp.Warp-Stable", detachedScriptPath], {
 					detached: true,
@@ -745,7 +746,7 @@ export async function openMacOSTerminal(cwd: string, argv?: string[]): Promise<T
 					`worktree-${Date.now()}-${Math.random().toString(36).slice(2)}.sh`,
 				)
 				await Bun.write(detachedScriptPath, scriptContent)
-				await fs.chmod(detachedScriptPath, 0o755)
+				await fsPromises.chmod(detachedScriptPath, 0o755)
 
 				const escapedPath = escapeAppleScript(detachedScriptPath)
 				const appleScript = `
@@ -767,7 +768,7 @@ export async function openMacOSTerminal(cwd: string, argv?: string[]): Promise<T
 				if (result.exitCode !== 0) {
 					// Best-effort cleanup of orphaned script before returning
 					try {
-						await fs.rm(detachedScriptPath)
+						await fsPromises.rm(detachedScriptPath)
 					} catch {
 						// Best-effort cleanup
 					}
@@ -799,7 +800,7 @@ export async function openMacOSTerminal(cwd: string, argv?: string[]): Promise<T
 		// Clean up orphaned script on error (matches Linux/Windows behavior)
 		if (detachedScriptPath) {
 			try {
-				await fs.rm(detachedScriptPath)
+				await fsPromises.rm(detachedScriptPath)
 			} catch {
 				// Best-effort cleanup
 			}
@@ -855,6 +856,16 @@ export async function openLinuxTerminal(cwd: string, argv?: string[]): Promise<T
 		return { success: false, error: "Working directory is required" }
 	}
 
+	// Guard: verify cwd exists and is a directory
+	try {
+		const stat = await fsPromises.stat(cwd)
+		if (!stat.isDirectory()) {
+			return { success: false, error: `Working directory is not a directory: ${cwd}` }
+		}
+	} catch {
+		return { success: false, error: `Working directory does not exist: ${cwd}` }
+	}
+
 	const escapedCwd = escapeBash(cwd)
 	const command = buildBashCommandFromArgv(argv)
 	const scriptContent = wrapWithSelfCleanup(
@@ -869,7 +880,7 @@ export async function openLinuxTerminal(cwd: string, argv?: string[]): Promise<T
 			return
 		}
 		try {
-			await fs.rm(filePath)
+			await fsPromises.rm(filePath)
 		} catch {
 			// Best-effort cleanup
 		}
@@ -887,7 +898,7 @@ export async function openLinuxTerminal(cwd: string, argv?: string[]): Promise<T
 			`worktree-${Date.now()}-${Math.random().toString(36).slice(2)}.sh`,
 		)
 		await Bun.write(scriptPath, scriptContent)
-		await fs.chmod(scriptPath, 0o755)
+		await fsPromises.chmod(scriptPath, 0o755)
 		return scriptPath
 	}
 
@@ -986,7 +997,7 @@ export async function openLinuxTerminal(cwd: string, argv?: string[]): Promise<T
 					warpConfigPath = configPath
 					const configContent = buildWarpLaunchConfigYaml(configName, cwd, configPath, command)
 
-					await fs.mkdir(configDir, { recursive: true })
+					await fsPromises.mkdir(configDir, { recursive: true })
 					await Bun.write(configPath, configContent)
 
 					result = await tryTerminal("warp-terminal", [
@@ -1150,6 +1161,16 @@ export async function openWindowsTerminal(cwd: string, argv?: string[]): Promise
 		return { success: false, error: "Working directory is required" }
 	}
 
+	// Guard: verify cwd exists and is a directory
+	try {
+		const stat = await fsPromises.stat(cwd)
+		if (!stat.isDirectory()) {
+			return { success: false, error: `Working directory is not a directory: ${cwd}` }
+		}
+	} catch {
+		return { success: false, error: `Working directory does not exist: ${cwd}` }
+	}
+
 	const escapedCwd = escapeBatch(cwd)
 	const command = buildBatchCommandFromArgv(argv)
 	const scriptContent = wrapBatchWithSelfCleanup(
@@ -1163,7 +1184,7 @@ export async function openWindowsTerminal(cwd: string, argv?: string[]): Promise
 		`worktree-${Date.now()}-${Math.random().toString(36).slice(2)}.bat`,
 	)
 	await Bun.write(scriptPath, scriptContent)
-	await fs.chmod(scriptPath, 0o755)
+	await fsPromises.chmod(scriptPath, 0o755)
 
 	try {
 		// Check for Windows Terminal
@@ -1196,7 +1217,7 @@ export async function openWindowsTerminal(cwd: string, argv?: string[]): Promise
 		} catch (error) {
 			// Failed to spawn - clean up orphaned script
 			try {
-				await fs.rm(scriptPath)
+				await fsPromises.rm(scriptPath)
 			} catch {
 				// Best-effort cleanup
 			}
@@ -1230,6 +1251,16 @@ export async function openWSLTerminal(cwd: string, argv?: string[]): Promise<Ter
 		return { success: false, error: "Working directory is required" }
 	}
 
+	// Guard: verify cwd exists and is a directory
+	try {
+		const stat = await fsPromises.stat(cwd)
+		if (!stat.isDirectory()) {
+			return { success: false, error: `Working directory is not a directory: ${cwd}` }
+		}
+	} catch {
+		return { success: false, error: `Working directory does not exist: ${cwd}` }
+	}
+
 	const escapedCwd = escapeBash(cwd)
 	const command = buildBashCommandFromArgv(argv)
 	const scriptContent = wrapWithSelfCleanup(
@@ -1243,7 +1274,7 @@ export async function openWSLTerminal(cwd: string, argv?: string[]): Promise<Ter
 		`worktree-${Date.now()}-${Math.random().toString(36).slice(2)}.sh`,
 	)
 	await Bun.write(scriptPath, scriptContent)
-	await fs.chmod(scriptPath, 0o755)
+	await fsPromises.chmod(scriptPath, 0o755)
 
 	try {
 		// Try wt.exe first (Windows Terminal via PATH interop)
@@ -1273,7 +1304,7 @@ export async function openWSLTerminal(cwd: string, argv?: string[]): Promise<Ter
 		} catch (error) {
 			// Failed to spawn - clean up orphaned script
 			try {
-				await fs.rm(scriptPath)
+				await fsPromises.rm(scriptPath)
 			} catch {
 				// Best-effort cleanup
 			}
