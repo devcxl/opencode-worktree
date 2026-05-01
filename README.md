@@ -1,50 +1,78 @@
-# opencode-worktree
+<p align="center">
+  <h1 align="center">opencode-worktree</h1>
+  <p align="center">
+    Git Worktree 即开即用，自动生成独立终端，为 AI 驱动的开发提供零摩擦隔离环境。
+  </p>
+  <p align="center">
+    <a href="https://www.npmjs.com/package/@devcxl/opencode-worktree" target="_blank">
+      <img alt="npm version" src="https://img.shields.io/npm/v/@devcxl/opencode-worktree?logo=npm&color=3776A0" />
+    </a>
+    <a href="https://www.npmjs.com/package/@devcxl/opencode-worktree" target="_blank">
+      <img alt="npm downloads" src="https://img.shields.io/npm/dm/@devcxl/opencode-worktree?logo=npm&color=3776A0" />
+    </a>
+    <a href="./LICENSE" target="_blank">
+      <img alt="license" src="https://img.shields.io/badge/license-MIT-blue" />
+    </a>
+    <a href="https://github.com/devcxl/opencode-worktree/actions/workflows/ci.yml" target="_blank">
+      <img alt="CI status" src="https://github.com/devcxl/opencode-worktree/actions/workflows/ci.yml/badge.svg" />
+    </a>
+    <a href="https://nodejs.org" target="_blank">
+      <img alt="node" src="https://img.shields.io/node/v/@devcxl/opencode-worktree?logo=node.js&color=3776A0" />
+    </a>
+    <a href="https://github.com/devcxl/opencode-worktree" target="_blank">
+      <img alt="GitHub stars" src="https://img.shields.io/github/stars/devcxl/opencode-worktree?style=social" />
+    </a>
+  </p>
+  <p align="center">
+    <a href="./README_EN.md">English</a> | <b>简体中文</b>
+  </p>
+</p>
 
-> Git worktrees that spawn their own terminal. Zero-friction isolation for AI-driven development.
+---
 
-An [OpenCode](https://github.com/sst/opencode) plugin that creates isolated git worktrees—where each worktree automatically opens its own terminal with OpenCode running inside. No manual setup, no context switching, no cleanup work.
+一个 [OpenCode](https://github.com/sst/opencode) 插件，用于创建隔离的 git worktree——每个 worktree 自动打开独立终端并在其中运行 OpenCode。无需手动设置，无需上下文切换，无需事后清理。
 
-## Why This Exists
+---
 
-You already know you can create git worktrees manually. Or use OpenCode Desktop's UI. So why this plugin?
+## 为什么需要这个插件
 
-Manual worktrees require setup: create the worktree, open a terminal, navigate to it, start OpenCode. OpenCode Desktop gives you worktrees, but locks you into the GUI workflow. Each approach has friction.
+手动创建 worktree 需要：创建 worktree、打开终端、导航到目录、启动 OpenCode。OpenCode Desktop 虽然支持 worktree，但仅限于 GUI 流程。每一步都是摩擦。
 
-This plugin eliminates that friction. When the AI calls `worktree_create`, your terminal spawns automatically, OpenCode is already running, and files are synchronized. When it calls `worktree_delete`, changes commit automatically and the worktree cleans itself up. It's the difference between having a tool and having a workflow.
+本插件消除了所有摩擦。当 AI 调用 `worktree_create` 时，终端自动打开，OpenCode 自动运行，文件自动同步。当 AI 调用 `worktree_delete` 时，变更自动提交，worktree 自动清理。这不仅是拥有一个工具，而是拥有一个完整的工作流。
 
-Works great standalone, but pairs especially well with **[cmux](https://www.cmux.dev/)** for agentic workflows. cmux provides native workspace management and programmatic control that fits naturally into automated development workflows. tmux is also supported if you prefer a traditional multiplexer setup.
+与 **[cmux](https://www.cmux.dev/)** 配合使用效果最佳，cmux 提供原生工作区管理和程序化控制能力，非常适合自动化开发工作流。同时支持 tmux。
 
-## When to Use This
+## 何时使用
 
-| Approach | Best For | Tradeoffs |
+| 方式 | 适用场景 | 权衡 |
 |----------|----------|-----------|
-| **Manual git worktree** | One-off experiments, full control | Manual setup, no auto-cleanup, context switching |
-| **OpenCode Desktop UI** | Visual workflow, integrated experience | Tied to desktop app, less automation |
-| **This plugin** | AI-driven workflows, automation, CLI-first users | Adds plugin dependency to your project |
+| **手动 git worktree** | 一次性实验，完全控制 | 手动设置，无自动清理，上下文切换 |
+| **OpenCode Desktop UI** | 可视化工作流，集成体验 | 绑定桌面应用，自动化程度低 |
+| **本插件** | AI 驱动工作流，自动化，CLI 优先用户 | 项目需要添加插件依赖 |
 
-If you prefer manual control or work exclusively in OpenCode Desktop, you may not need this. **But if you want AI agents to seamlessly create and manage isolated development sessions—complete with automatic terminal spawning and state cleanup—this is what you're looking for.**
+如果你偏向手动控制或只使用 OpenCode Desktop，本插件可能不是必需的。**但如果希望 AI 代理能无缝创建和管理隔离的开发会话——包括自动打开终端和自动状态清理——这就是你要找的工具。**
 
-## How It Works
+## 工作流程
 
 ```mermaid
 flowchart LR
-    A[Create Worktree] --> B{Terminal Spawns}
-    B --> C[OpenCode Running]
-    C --> D[Work in Isolation]
-    D --> E[Delete Worktree]
-    E --> F{Auto-commit & Cleanup}
-    F --> G[Session Ends]
+    A[创建 Worktree] --> B{终端自动打开}
+    B --> C[OpenCode 运行中]
+    C --> D[隔离开发]
+    D --> E[删除 Worktree]
+    E --> F{自动提交 & 清理}
+    F --> G[会话结束]
 ```
 
-1. **Create** - AI calls `worktree_create("feature/dark-mode")`
-2. **Terminal spawns** - New window opens with OpenCode at `~/.local/share/opencode/worktree/<project-id>/feature/dark-mode`
-3. **Work** - AI experiments in complete isolation
-4. **Delete** - AI calls `worktree_delete("reason")`
-5. **Cleanup** - Changes commit automatically, git worktree removed
+1. **创建** - AI 调用 `worktree_create("feature/dark-mode")`
+2. **终端打开** - 新窗口启动 OpenCode，工作目录为 `~/.local/share/opencode/worktree/<project-id>/feature/dark-mode`
+3. **开发** - AI 在完全隔离的环境中实验
+4. **删除** - AI 调用 `worktree_delete("reason")`
+5. **清理** - 变更自动提交，git worktree 删除
 
-Worktrees are stored in `~/.local/share/opencode/worktree/<project-id>/<branch>/` outside your repository.
+Worktree 存储在 `~/.local/share/opencode/worktree/<project-id>/<branch>/`，位于仓库之外。
 
-## Installation
+## 安装
 
 在项目根目录的 `opencode.json` 中加入：
 
@@ -57,95 +85,92 @@ Worktrees are stored in `~/.local/share/opencode/worktree/<project-id>/<branch>/
 
 前置条件：**OpenCode 所使用的 shell 必须能直接执行 `node`**。
 
-## Usage
+## 使用方法
 
-The plugin adds two tools:
+插件提供两个工具：
 
-| Tool | Purpose |
+| 工具 | 用途 |
 |------|---------|
-| `worktree_create(branch, baseBranch?)` | Create a new git worktree for isolated development. A new terminal spawns with OpenCode ready. |
-| `worktree_delete(reason)` | Delete the current worktree. Changes commit automatically before removal. |
+| `worktree_create(branch, baseBranch?)` | 创建新的 git worktree 用于隔离开发。自动打开新终端并运行 OpenCode。 |
+| `worktree_delete(reason)` | 删除当前 worktree。删除前自动提交变更。 |
 
-### Creating a Worktree
+### 创建 Worktree
 
 ```yaml
 worktree_create:
   branch: "feature/dark-mode"
-  baseBranch: "main"  # optional, defaults to HEAD
+  baseBranch: "main"  # 可选，默认为 HEAD
 ```
 
-When called, this:
-1. Creates git worktree at `~/.local/share/opencode/worktree/<project-id>/feature/dark-mode`
-2. Syncs files based on `.opencode/worktree.jsonc` config
-3. Runs post-create hooks (e.g., `pnpm install`)
-4. Opens a new terminal with OpenCode running
+调用后：
+1. 在 `~/.local/share/opencode/worktree/<project-id>/feature/dark-mode` 创建 git worktree
+2. 根据 `.opencode/worktree.jsonc` 配置同步文件
+3. 执行创建后钩子（如 `pnpm install`）
+4. 打开新终端并运行 OpenCode
 
-### Deleting a Worktree
+### 删除 Worktree
 
 ```yaml
 worktree_delete:
-  reason: "Feature complete, merging to main"
+  reason: "功能开发完成，合并到 main"
 ```
 
-When called, this:
-1. Runs pre-delete hooks (e.g., `docker compose down`)
-2. Commits all changes with snapshot message
-3. Removes git worktree with `--force`
-4. Cleans up session state
+调用后：
+1. 执行删除前钩子（如 `docker compose down`）
+2. 提交所有变更并生成快照信息
+3. 使用 `--force` 删除 git worktree
+4. 清理会话状态
 
-## Platform Support
+## 平台支持
 
-The plugin detects your terminal automatically:
+插件自动检测终端环境：
 
-| Platform | Terminals Supported |
+| 平台 | 支持的终端 |
 |----------|---------------------|
 | **macOS** | Ghostty, iTerm2, Kitty, WezTerm, Alacritty, Warp, Terminal.app |
 | **Linux** | Kitty, WezTerm, Alacritty, Ghostty, Foot, GNOME Terminal, Konsole, XFCE4 Terminal, xterm |
-| **Windows** | Windows Terminal (wt.exe), cmd.exe fallback |
-| **cmux** | **Uses native cmux workflow** when `CMUX_WORKSPACE_ID` is present or socket control is explicitly enabled (`CMUX_SOCKET_PATH` + `CMUX_SOCKET_MODE=allowAll`); each worktree launch opens a new cmux workspace and falls back safely when unavailable |
-| **tmux** | Creates new tmux window (supported on all platforms) |
-| **WSL** | Windows Terminal via wt.exe interop |
+| **Windows** | Windows Terminal (wt.exe), cmd.exe 回退 |
+| **cmux** | 检测到 `CMUX_WORKSPACE_ID` 或显式启用 socket 控制（`CMUX_SOCKET_PATH` + `CMUX_SOCKET_MODE=allowAll`）时使用原生 cmux 工作流；每个 worktree 启动创建新的 cmux workspace |
+| **tmux** | 在所有平台上创建新的 tmux window |
+| **WSL** | 通过 wt.exe 跨系统调用 Windows Terminal |
 
-### Detection Priority
+### 检测优先级
 
-1. **tmux** - Runtime priority on all platforms when already inside tmux. Creates new tmux windows instead of spawning separate terminal applications.
-2. **cmux** - **Recommended for new agentic workflows**. Uses native cmux launch flow when available via `CMUX_WORKSPACE_ID` or explicit socket control (`CMUX_SOCKET_PATH` with `CMUX_SOCKET_MODE=allowAll`). Worktree launches always create a new cmux workspace (no current-workspace reuse), then fall back safely when cmux context is unavailable.
-3. **WSL** - Uses Windows Terminal for Linux subsystem
-4. **Environment vars** - Checks `TERM_PROGRAM`, `KITTY_WINDOW_ID`, `GHOSTTY_RESOURCES_DIR`, etc.
-5. **Fallback** - System defaults (Terminal.app, xterm, cmd.exe)
+1. **tmux** - 所有平台运行时优先检测，已在 tmux 内时创建新 window，不切换终端应用
+2. **cmux** - **推荐用于新的 AI 工作流**。通过 `CMUX_WORKSPACE_ID` 或显式 socket 控制检测，每个 worktree 启动创建新的 cmux workspace
+3. **WSL** - Linux 子系统使用 Windows Terminal
+4. **环境变量** - 检测 `TERM_PROGRAM`、`KITTY_WINDOW_ID`、`GHOSTTY_RESOURCES_DIR` 等
+5. **回退** - 系统默认终端（Terminal.app、xterm、cmd.exe）
 
-## Configuration
+## 配置
 
-Auto-creates `.opencode/worktree.jsonc` on first use:
+首次使用时自动创建 `.opencode/worktree.jsonc`：
 
 ```jsonc
 {
   "$schema": "https://github.com/devcxl/opencode-worktree/raw/main/schemas/worktree.json",
 
   "sync": {
-    // Files to copy from main worktree
+    // 从主 worktree 复制的文件
     "copyFiles": [],
-
-    // Directories to symlink
+    // 软链接的目录
     "symlinkDirs": [],
-
-    // Patterns to exclude
+    // 排除的模式
     "exclude": []
   },
 
   "hooks": {
-    // Run after creation
+    // 创建后执行
     "postCreate": [],
-
-    // Run before deletion
+    // 删除前执行
     "preDelete": []
   }
 }
 ```
 
-### Common Configurations
+### 常见配置
 
-**Node.js project:**
+**Node.js 项目：**
 ```jsonc
 {
   "sync": {
@@ -158,7 +183,7 @@ Auto-creates `.opencode/worktree.jsonc` on first use:
 }
 ```
 
-**Docker-based project:**
+**Docker 项目：**
 ```jsonc
 {
   "sync": {
@@ -171,52 +196,52 @@ Auto-creates `.opencode/worktree.jsonc` on first use:
 }
 ```
 
-## FAQ
+## 常见问题
 
-### Why not just use git worktree manually?
+### 为什么不直接用 git worktree？
 
-Manual worktrees require manual setup: `git worktree add`, opening a terminal, navigating to it, starting OpenCode. Each step is friction. This plugin gives you a single command that handles everything end-to-end, complete with automatic file synchronization and lifecycle hooks.
+手动 worktree 需要手动设置：`git worktree add`、打开终端、导航、启动 OpenCode。每一步都是摩擦。本插件提供一个命令完成全部流程，包括文件同步和生命周期钩子。
 
-### Does this work with OpenCode Desktop?
+### 是否兼容 OpenCode Desktop？
 
-Worktrees created with this plugin work fine in OpenCode Desktop, but you lose the automatic terminal spawning. The plugin's value is in CLI-first workflows and AI automation—if you prefer Desktop exclusively, you may not need this.
+本插件创建的 worktree 可在 OpenCode Desktop 中正常使用，但无法自动打开终端。插件的核心价值在于 CLI 优先工作流和 AI 自动化——如果只使用 Desktop，可能不需要本插件。
 
-### What happens if I forget to delete the worktree?
+### 忘记删除 worktree 会怎样？
 
-Changes remain in `~/.local/share/opencode/worktree/<project-id>/<branch>`. The branch exists in git. You can manually check out or delete it later. The plugin doesn't force cleanup—it's just the convenient default path.
+变更保留在 `~/.local/share/opencode/worktree/<project-id>/<branch>`。分支存在于 git 中。你可以手动检出或删除它。插件不会强制清理——默认路径是方便，但非强制。
 
-### Can I have multiple worktrees simultaneously?
+### 能否同时创建多个 worktree？
 
-Yes. Each gets its own terminal and OpenCode session. They're fully independent.
+可以。每个 worktree 拥有独立的终端和 OpenCode 会话，完全隔离。
 
-### Does this break my existing git workflow?
+### 会不会影响现有的 git 工作流？
 
-No. It uses standard git worktrees. `git worktree list` shows them. Branches merge normally.
+不会。它使用标准的 git worktree：`git worktree list` 可以看到它们，分支可以正常合并。
 
-### Why spawn a new terminal instead of reusing the current one?
+### 为什么不复用当前终端？
 
-Isolation. You can close the worktree session without affecting your main workflow. If the AI breaks something, your original terminal remains untouched.
+隔离。关闭 worktree 会话不会影响主工作流。如果 AI 出了什么问题，原始终端不受影响。
 
-## Limitations
+## 限制
 
-### Security
+### 安全
 
-- Branch names validated against git ref rules and shell metacharacters
-- File sync paths validated to prevent directory traversal
-- Hook commands run with user privileges in worktree directory
+- 分支名会验证 git ref 规则和 shell 元字符
+- 文件同步路径会验证防止目录遍历
+- 钩子命令以用户权限在 worktree 目录中执行
 
-### Terminal Spawning
+### 终端启动
 
-- Ghostty on macOS uses inline commands to avoid permission dialogs
-- Kitty tab support requires `allow_remote_control` config (falls back to window)
-- Some terminals don't support tabs; opens new OS window instead
+- macOS 上 Ghostty 使用内联命令避免权限弹窗
+- Kitty 标签支持需要 `allow_remote_control` 配置（回退到窗口模式）
+- 部分终端不支持标签页，会打开新的 OS 窗口
 
-## Manual Installation
+## 手动安装
 
-## Disclaimer
+## 声明
 
-This project is not built by the OpenCode team and is not affiliated with [OpenCode](https://github.com/sst/opencode) in any way.
+本项目并非由 OpenCode 团队构建，与 [OpenCode](https://github.com/sst/opencode) 无任何关联。
 
-## License
+## 许可
 
 MIT
