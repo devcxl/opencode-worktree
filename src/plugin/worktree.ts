@@ -13,7 +13,7 @@
 
 import type { Database } from "bun:sqlite"
 import { constants as fsConstants } from "node:fs"
-import { access, copyFile, cp, mkdir, rm, stat, symlink } from "node:fs/promises"
+import { access, chmod, copyFile, cp, mkdir, rm, stat, symlink } from "node:fs/promises"
 import * as os from "node:os"
 import * as path from "node:path"
 import { type Plugin, tool } from "@opencode-ai/plugin"
@@ -31,14 +31,16 @@ interface Logger {
 import { parse as parseJsonc } from "jsonc-parser"
 import { z } from "zod"
 
-import { getProjectId } from "./kdco-primitives/get-project-id"
 import {
+	escapeBash,
+	getProjectId,
+	getTempDir,
 	type ActiveLaunchContext,
 	buildSessionLaunchArgv,
 	parseActiveLaunchContext,
 	serializePersistedLaunchMetadata,
 	toPersistedLaunchMetadata,
-} from "./worktree/launch-context"
+} from "./kdco-primitives"
 import {
 	addSession,
 	clearPendingDelete,
@@ -49,7 +51,11 @@ import {
 	removeSession,
 	setPendingDelete,
 } from "./worktree/state"
-import { openTerminal, type TerminalResult } from "./worktree/terminal"
+import {
+	openTerminal,
+	type TerminalResult,
+	wrapWithSelfCleanup,
+} from "./worktree/terminal"
 
 /** Maximum retries for database initialization */
 const DB_MAX_RETRIES = 3
@@ -777,21 +783,30 @@ async function symlinkDirs(
 
 /**
  * Run hook commands in the worktree directory.
+ * Commands are executed via temporary script files to avoid shell injection.
  */
 async function runHooks(cwd: string, commands: string[], log: Logger): Promise<void> {
 	for (const command of commands) {
 		log.info(`[worktree] Running hook: ${command}`)
 		try {
-			// Use shell to properly handle quoted arguments and complex commands
-			const result = Bun.spawnSync(["bash", "-c", command], {
+			const scriptContent = wrapWithSelfCleanup(command)
+			const scriptPath = path.join(
+				getTempDir(),
+				`hook-${Date.now()}-${Math.random().toString(36).slice(2)}.sh`,
+			)
+			await Bun.write(scriptPath, scriptContent)
+			await chmod(scriptPath, 0o755)
+
+			const result = Bun.spawnSync(["bash", scriptPath], {
 				cwd,
 				stdout: "inherit",
 				stderr: "pipe",
 			})
 			if (result.exitCode !== 0) {
 				const stderr = result.stderr?.toString() || ""
+				const sanitizedStderr = sanitizeLogOutput(stderr)
 				log.warn(
-					`[worktree] Hook failed (exit ${result.exitCode}): ${command}${stderr ? `\n${stderr}` : ""}`,
+					`[worktree] Hook failed (exit ${result.exitCode}): ${command}${sanitizedStderr ? `\n${sanitizedStderr}` : ""}`,
 				)
 			}
 		} catch (error) {
@@ -801,11 +816,42 @@ async function runHooks(cwd: string, commands: string[], log: Logger): Promise<v
 }
 
 /**
+ * Sanitize log output to prevent sensitive information leakage.
+ * Removes lines that may contain file paths, environment variables, or other sensitive data.
+ */
+function sanitizeLogOutput(output: string): string {
+	if (!output) return ""
+	const lines = output.split("\n")
+	const sanitized = lines.filter((line) => {
+		const lower = line.toLowerCase()
+		return (
+			!lower.includes("password") &&
+			!lower.includes("secret") &&
+			!lower.includes("token") &&
+			!lower.includes("api_key") &&
+			!lower.includes("auth") &&
+			!lower.includes("credential") &&
+			!lower.includes("private")
+		)
+	})
+	return sanitized.join("\n")
+}
+
+/**
  * Resolve a path that may contain a leading `~` to the user's home directory.
+ * Rejects path traversal patterns that could escape the intended base directory.
  */
 function resolveHomePath(p: string): string {
 	if (p === "~" || p.startsWith("~/") || p.startsWith("~\\")) {
-		return path.join(os.homedir(), p.slice(1))
+		const resolved = path.join(os.homedir(), p.slice(1))
+		if (resolved.includes("..")) {
+			throw new Error(`Invalid path traversal in: ${p}`)
+		}
+		return resolved
+	}
+	// Reject absolute path traversal attempts
+	if (p.includes("..")) {
+		throw new Error(`Invalid path traversal in: ${p}`)
 	}
 	return p
 }
