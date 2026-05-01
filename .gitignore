@@ -34,6 +34,10 @@ pnpm-debug.log*
 # Testing
 coverage/
 
+# SQLite databases (runtime data)
+*.sqlite
+*.sqlite-journal
+
 # Temporary files
 *.tmp
 *.temp
