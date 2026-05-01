@@ -98,6 +98,7 @@ function isValidBranchName(name: string): boolean {
 const branchNameSchema = z
 	.string()
 	.min(1, "Branch name cannot be empty")
+	.max(255, "Branch name too long")
 	.refine((name) => !name.startsWith("-"), {
 		message: "Branch name cannot start with '-' (prevents option injection)",
 	})
@@ -117,7 +118,6 @@ const branchNameSchema = z
 	.refine((name) => !/[\x00-\x1f\x7f ~^:?*[\]\\]/.test(name), {
 		message: "Branch name contains invalid characters",
 	})
-	.max(255, "Branch name too long")
 	.refine((name) => isValidBranchName(name), "Contains invalid git ref characters")
 	.refine((name) => !name.startsWith(".") && !name.endsWith("."), "Cannot start or end with dot")
 	.refine((name) => !name.endsWith(".lock"), "Cannot end with .lock")
