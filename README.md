@@ -46,17 +46,16 @@ Worktrees are stored in `~/.local/share/opencode/worktree/<project-id>/<branch>/
 
 ## Installation
 
-```bash
-ocx add kdco/worktree --from https://registry.kdco.dev
+在项目根目录的 `opencode.json` 中加入：
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["@kdco/worktree"]
+}
 ```
 
-If you don't have OCX installed, install it from the [OCX repository](https://github.com/kdcokenny/ocx).
-
-**Optional:** Install `kdco-workspace` for the full experience—it bundles worktrees with background agents, planning tools, and notifications:
-
-```bash
-ocx add kdco/workspace --from https://registry.kdco.dev
-```
+前置条件：**OpenCode 所使用的 shell 必须能直接执行 `node`**。
 
 ## Usage
 
