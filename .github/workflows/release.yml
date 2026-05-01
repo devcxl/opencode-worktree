@@ -91,19 +91,3 @@ jobs:
         env:
           TAG: ${{ steps.package.outputs.tag }}
         run: git push origin "$TAG"
-
-      - name: Write summary
-        env:
-          TAG: ${{ steps.package.outputs.tag }}
-          VERSION: ${{ steps.package.outputs.version }}
-          RELEASE_REF: ${{ inputs.ref }}
-        run: |
-          {
-            echo "## Release tag created"
-            echo ""
-            echo "- Ref: \`${RELEASE_REF}\`"
-            echo "- Version: \`${VERSION}\`"
-            echo "- Tag: \`${TAG}\`"
-            echo ""
-            echo "已推送 tag。接下来会由 `Publish to npm` workflow 自动发布到 npm registry。"
-          } >> "$GITHUB_STEP_SUMMARY"
