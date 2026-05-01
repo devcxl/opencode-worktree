@@ -24,3 +24,11 @@ export { isInsideTmux } from "./terminal-detect"
 export type { OpencodeClient } from "./types"
 // Timeout handling
 export { TimeoutError, withTimeout } from "./with-timeout"
+// Launch context
+export {
+	type ActiveLaunchContext,
+	buildSessionLaunchArgv,
+	parseActiveLaunchContext,
+	serializePersistedLaunchMetadata,
+	toPersistedLaunchMetadata,
+} from "../worktree/launch-context"
