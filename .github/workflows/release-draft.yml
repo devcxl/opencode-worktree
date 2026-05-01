@@ -1,6 +1,12 @@
 name: Draft Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 要创建 Draft Release 的 tag (如 v1.0.0)
+        required: true
+        type: string
   push:
     tags:
       - "v*"
@@ -14,9 +20,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Determine tag to use
+        id: tag
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "value=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ steps.tag.outputs.value }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -32,18 +48,18 @@ jobs:
 
       - name: Validate tag matches package version
         env:
-          EXPECTED_TAG: v${{ steps.package.outputs.version }}
-          CURRENT_TAG: ${{ github.ref_name }}
+          TAG: ${{ steps.tag.outputs.value }}
         run: |
-          if [ "$CURRENT_TAG" != "$EXPECTED_TAG" ]; then
-            echo "::error::推送的 tag ($CURRENT_TAG) 与 package.json 版本不一致，期望为 $EXPECTED_TAG"
+          EXPECTED_TAG="v${{ steps.package.outputs.version }}"
+          if [ "$TAG" != "$EXPECTED_TAG" ]; then
+            echo "::error::Tag ($TAG) 与 package.json 版本不一致，期望为 $EXPECTED_TAG"
             exit 1
           fi
 
       - name: Create or update draft release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          tag_name: ${{ steps.tag.outputs.value }}
+          name: Release ${{ steps.tag.outputs.value }}
           draft: true
           generate_release_notes: true
