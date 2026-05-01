@@ -1,0 +1,32 @@
+{
+  "name": "@kdco/worktree",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "OCX Worktree Plugin - Creates isolated git worktrees for AI development sessions",
+  "main": "./dist/server.js",
+  "exports": {
+    "./server": {
+      "import": "./dist/server.js",
+      "config": {}
+    }
+  },
+  "engines": {
+    "opencode": ">=0.1.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "tsc"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=0.1.0",
+    "@opencode-ai/sdk": ">=0.1.0"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.2.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  }
+}
