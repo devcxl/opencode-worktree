@@ -51,7 +51,7 @@ Worktrees are stored in `~/.local/share/opencode/worktree/<project-id>/<branch>/
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@kdco/worktree"]
+  "plugin": ["@devcxl/opencode-worktree"]
 }
 ```
 
@@ -120,7 +120,7 @@ Auto-creates `.opencode/worktree.jsonc` on first use:
 
 ```jsonc
 {
-  "$schema": "https://registry.kdco.dev/schemas/worktree.json",
+  "$schema": "https://github.com/devcxl/opencode-worktree/raw/main/schemas/worktree.json",
 
   "sync": {
     // Files to copy from main worktree
@@ -212,37 +212,6 @@ Isolation. You can close the worktree session without affecting your main workfl
 - Some terminals don't support tabs; opens new OS window instead
 
 ## Manual Installation
-
-Copy [`src/`](./src) to `.opencode/plugin/`. You lose OCX's dependency management and automatic updates.
-
-**Requirements:**
-- Manually install `jsonc-parser`
-- Manual updates via re-copying
-
-## Part of the OCX Ecosystem
-
-From the [KDCO Registry](https://github.com/kdcokenny/ocx/tree/main/registry/src/kdco). Combine with:
-
-- [opencode-workspace](https://github.com/kdcokenny/opencode-workspace) - Structured planning with rule injection
-- [opencode-background-agents](https://github.com/kdcokenny/opencode-background-agents) - Async delegation with persistent outputs
-- [opencode-notify](https://github.com/kdcokenny/opencode-notify) - Native OS notifications
-
-## Acknowledgments
-
-Inspired by [opencode-worktree-session](https://github.com/felixAnhalt/opencode-worktree-session) by Felix Anhalt.
-
-## Contributing
-
-This facade is maintained from the main [OCX monorepo](https://github.com/kdcokenny/ocx).
-
-If you want to update opencode-worktree itself, start here:
-
-- https://github.com/kdcokenny/ocx/blob/main/workers/kdco-registry/files/plugins/worktree.ts
-- https://github.com/kdcokenny/ocx/tree/main/workers/kdco-registry/files/plugins/worktree
-
-- Open issues here: https://github.com/kdcokenny/ocx/issues/new
-- Open pull requests here: https://github.com/kdcokenny/ocx/compare
-- Please do **not** open issues or PRs in this facade repository.
 
 ## Disclaimer
 

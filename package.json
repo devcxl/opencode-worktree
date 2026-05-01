@@ -1,7 +1,7 @@
 {
   "name": "@devcxl/opencode-worktree",
   "version": "0.1.1",
-  "description": "OCX Worktree Plugin - Creates isolated git worktrees for AI development sessions",
+  "description": "OpenCode Worktree Plugin - Creates isolated git worktrees for AI development sessions",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/devcxl/opencode-worktree.git"
