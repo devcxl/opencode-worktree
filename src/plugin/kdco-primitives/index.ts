@@ -1,5 +1,5 @@
 /**
- * Shared primitives for kdco registry plugins.
+ * Shared primitives for OpenCode plugins.
  *
  * This module provides common utilities extracted from multiple plugin files
  * to eliminate duplication and ensure consistent behavior across plugins.
@@ -24,11 +24,3 @@ export { isInsideTmux } from "./terminal-detect"
 export type { OpencodeClient } from "./types"
 // Timeout handling
 export { TimeoutError, withTimeout } from "./with-timeout"
-// Launch context
-export {
-	type ActiveLaunchContext,
-	buildSessionLaunchArgv,
-	parseActiveLaunchContext,
-	serializePersistedLaunchMetadata,
-	toPersistedLaunchMetadata,
-} from "../worktree/launch-context"

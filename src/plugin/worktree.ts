@@ -1,5 +1,5 @@
 /**
- * OCX Worktree Plugin
+ * OpenCode Worktree Plugin
  *
  * Creates isolated git worktrees for AI development sessions with
  * seamless terminal spawning across macOS, Windows, and Linux.
@@ -7,12 +7,9 @@
  * Inspired by opencode-worktree-session by Felix Anhalt
  * https://github.com/felixAnhalt/opencode-worktree-session
  * License: MIT
- *
- * Rewritten for OCX with production-proven patterns.
  */
 
 import type { Database } from "bun:sqlite"
-import { constants as fsConstants } from "node:fs"
 import { access, chmod, copyFile, cp, mkdir, rm, stat, symlink } from "node:fs/promises"
 import * as os from "node:os"
 import * as path from "node:path"
@@ -35,11 +32,6 @@ import {
 	escapeBash,
 	getProjectId,
 	getTempDir,
-	type ActiveLaunchContext,
-	buildSessionLaunchArgv,
-	parseActiveLaunchContext,
-	serializePersistedLaunchMetadata,
-	toPersistedLaunchMetadata,
 } from "./kdco-primitives"
 import {
 	addSession,
@@ -172,141 +164,6 @@ class WorktreeError extends Error {
 	}
 }
 
-type ResolveExecutable = (command: string) => string | null | undefined
-type ValidateProfileAvailability = (
-	ocxBin: string,
-	profile: string,
-) => Promise<Result<void, string>>
-
-interface LaunchExecutableValidationOptions {
-	resolveExecutable?: ResolveExecutable
-	pathExists?: (absolutePath: string) => Promise<boolean>
-}
-
-export function isPathLikeCommand(command: string): boolean {
-	return command.includes("/") || command.includes("\\")
-}
-
-function resolveStableLaunchBinaryPath(
-	ocxBin: string,
-	baseDirectory: string,
-	resolveExecutable: ResolveExecutable,
-): Result<string, string> {
-	if (isPathLikeCommand(ocxBin)) {
-		const resolvedPath = path.isAbsolute(ocxBin) ? ocxBin : path.resolve(baseDirectory, ocxBin)
-		return Result.ok(resolvedPath)
-	}
-
-	const resolvedFromPath = resolveExecutable(ocxBin)
-	if (!resolvedFromPath) {
-		return Result.err(`Configured OCX binary "${ocxBin}" is not available in PATH.`)
-	}
-
-	const resolvedPath = path.isAbsolute(resolvedFromPath)
-		? resolvedFromPath
-		: path.resolve(baseDirectory, resolvedFromPath)
-
-	return Result.ok(resolvedPath)
-}
-
-async function pathPointsToLaunchableBinary(absolutePath: string): Promise<boolean> {
-	try {
-		const stats = await stat(absolutePath)
-		if (stats.isDirectory()) {
-			return false
-		}
-
-		await access(absolutePath, fsConstants.X_OK)
-		return true
-	} catch {
-		return false
-	}
-}
-
-export async function ensureLaunchContextExecutable(
-	launchContext: ActiveLaunchContext,
-	baseDirectory: string,
-	options: LaunchExecutableValidationOptions = {},
-): Promise<ActiveLaunchContext> {
-	if (launchContext.mode === "plain") {
-		return launchContext
-	}
-
-	const { ocxBin, profile } = launchContext
-	const resolveExecutable = options.resolveExecutable ?? ((command: string) => Bun.which(command))
-	const pathExists = options.pathExists ?? pathPointsToLaunchableBinary
-	const resolvedPathResult = resolveStableLaunchBinaryPath(ocxBin, baseDirectory, resolveExecutable)
-	if (!resolvedPathResult.ok) {
-		throw new WorktreeError(
-			`${resolvedPathResult.error} Repair the parent OCX profile (${profile}) and recreate this worktree session.`,
-			"launch",
-		)
-	}
-
-	const resolvedPath = resolvedPathResult.value
-	const isLaunchable = await pathExists(resolvedPath)
-	if (!isLaunchable) {
-		throw new WorktreeError(
-			`Configured OCX binary "${ocxBin}" resolved to "${resolvedPath}" but is missing or stale. Repair the parent OCX profile (${profile}) and recreate this worktree session.`,
-			"launch",
-		)
-	}
-
-	return {
-		mode: "ocx",
-		ocxBin: resolvedPath,
-		profile,
-	}
-}
-
-export async function validateOcxProfileAvailability(
-	ocxBin: string,
-	profile: string,
-): Promise<Result<void, string>> {
-	try {
-		const proc = Bun.spawn([ocxBin, "profile", "show", profile, "--global", "--json"], {
-			stdout: "pipe",
-			stderr: "pipe",
-		})
-		const [exitCode, stdout, stderr] = await Promise.all([
-			proc.exited,
-			new Response(proc.stdout).text(),
-			new Response(proc.stderr).text(),
-		])
-
-		if (exitCode === 0) {
-			return Result.ok(undefined)
-		}
-
-		const detail = stderr.trim() || stdout.trim() || `exit ${exitCode}`
-		return Result.err(detail)
-	} catch (error) {
-		return Result.err(error instanceof Error ? error.message : String(error))
-	}
-}
-
-export async function ensureLaunchContextProfile(
-	launchContext: ActiveLaunchContext,
-	validateProfileAvailability: ValidateProfileAvailability = validateOcxProfileAvailability,
-): Promise<void> {
-	if (launchContext.mode === "plain") {
-		return
-	}
-
-	const validationResult = await validateProfileAvailability(
-		launchContext.ocxBin,
-		launchContext.profile,
-	)
-	if (validationResult.ok) {
-		return
-	}
-
-	throw new WorktreeError(
-		`Configured OCX profile "${launchContext.profile}" is missing or stale. ${validationResult.error} Repair the parent OCX profile and recreate this worktree session.`,
-		"launch",
-	)
-}
-
 // =============================================================================
 // SESSION FORKING HELPERS
 // =============================================================================
@@ -366,9 +223,6 @@ interface FinalizeWorktreeLaunchOptions {
 		branch: string
 		path: string
 		createdAt: string
-		launchMode: "plain" | "ocx"
-		profile: string | null
-		ocxBin: string | null
 	}
 	log: Logger
 	openTerminalFn?: (cwd: string, argv?: string[], windowName?: string) => Promise<TerminalResult>
@@ -868,10 +722,10 @@ async function loadWorktreeConfig(directory: string, log: Logger): Promise<Workt
 		if (!(await file.exists())) {
 			// Auto-create config with helpful defaults and comments
 			const defaultConfig = `{
-  "$schema": "https://registry.kdco.dev/schemas/worktree.json",
+  "$schema": "https://github.com/devcxl/opencode-worktree/raw/main/schemas/worktree.json",
 
   // Worktree plugin configuration
-  // Documentation: https://github.com/kdcokenny/ocx
+  // Documentation: https://github.com/devcxl/opencode-worktree
 
   // Custom base path for worktree storage (supports ~)
   // Default: ~/.local/share/opencode/worktree
@@ -984,20 +838,6 @@ export const WorktreePlugin: Plugin = async (ctx) => {
 						}
 					}
 
-					let activeLaunchContext: ActiveLaunchContext
-					try {
-						activeLaunchContext = parseActiveLaunchContext(
-							process.env as Record<string, string | undefined>,
-						)
-						activeLaunchContext = await ensureLaunchContextExecutable(
-							activeLaunchContext,
-							directory,
-						)
-						await ensureLaunchContextProfile(activeLaunchContext)
-					} catch (error) {
-						return `❌ ${error instanceof Error ? error.message : String(error)}`
-					}
-
 					// Load config first so worktreePath is available for createWorktree
 					const worktreeConfig = await loadWorktreeConfig(directory, log)
 
@@ -1053,9 +893,8 @@ export const WorktreePlugin: Plugin = async (ctx) => {
 					log.debug(
 						`Forked session ${forkedSession.id}, plan: ${planCopied}, delegations: ${delegationsCopied}`,
 					)
-					const persistedLaunchMetadata = toPersistedLaunchMetadata(activeLaunchContext)
-					const launchArgv = buildSessionLaunchArgv(forkedSession.id, persistedLaunchMetadata)
-					const serializedLaunchMetadata = serializePersistedLaunchMetadata(persistedLaunchMetadata)
+
+					const launchArgv = ["opencode", "--session", forkedSession.id]
 
 					const terminalResult = await finalizeWorktreeLaunch({
 						database,
@@ -1068,9 +907,6 @@ export const WorktreePlugin: Plugin = async (ctx) => {
 							branch: args.branch,
 							path: worktreePath,
 							createdAt: new Date().toISOString(),
-							launchMode: serializedLaunchMetadata.launchMode,
-							profile: serializedLaunchMetadata.profile,
-							ocxBin: serializedLaunchMetadata.ocxBin,
 						},
 						log,
 						deleteForkedSessionFn: async (sessionId: string) => {
